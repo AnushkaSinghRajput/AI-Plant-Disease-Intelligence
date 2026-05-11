@@ -1,4 +1,24 @@
+import { useAuthStore } from '@/store/auth';
+import { SessionExpiredError, normalizeApiDetail } from '@/lib/apiErrors';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+async function readErrorDetail(res: Response): Promise<string> {
+  const body = await res.json().catch(() => ({}));
+  return normalizeApiDetail((body as { detail?: unknown }).detail) || res.statusText || 'Request failed';
+}
+
+function throwIfUnauthorized(res: Response, detail: string): never {
+  if (res.status === 401) {
+    useAuthStore.getState().clearSession();
+    const msg =
+      /invalid|expired|not authenticated|could not validate/i.test(detail)
+        ? 'Your session is invalid or expired. Please sign in again.'
+        : detail;
+    throw new SessionExpiredError(msg);
+  }
+  throw new Error(detail);
+}
 
 export async function demoLogin(email: string, password: string): Promise<{ access_token: string; expires_in: number }> {
   const res = await fetch(`${API_URL}/api/auth/demo-login`, {
@@ -7,8 +27,8 @@ export async function demoLogin(email: string, password: string): Promise<{ acce
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Login failed');
+    const body = await res.json().catch(() => ({}));
+    throw new Error(normalizeApiDetail((body as { detail?: unknown }).detail) || 'Login failed');
   }
   return res.json();
 }
@@ -20,8 +40,8 @@ export async function getToken(idToken: string): Promise<{ access_token: string;
     body: JSON.stringify({ id_token: idToken }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Login failed');
+    const body = await res.json().catch(() => ({}));
+    throw new Error(normalizeApiDetail((body as { detail?: unknown }).detail) || 'Login failed');
   }
   return res.json();
 }
@@ -39,8 +59,8 @@ export async function demoPredict(
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Prediction failed');
+    const detail = await readErrorDetail(res);
+    throw new Error(detail);
   }
   return res.json();
 }
@@ -56,27 +76,30 @@ export async function uploadAndPredict(
   form.append('language', options?.language ?? 'en');
   const res = await fetch(`${API_URL}/api/predictions/upload`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Prediction failed');
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
   }
   return res.json();
 }
 
 export async function getHistory(accessToken: string, limit = 50): Promise<PredictionLog[]> {
   const res = await fetch(`${API_URL}/api/predictions/history?limit=${limit}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
   });
-  if (!res.ok) throw new Error('Failed to load history');
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
+  }
   return res.json();
 }
 
 export async function getClasses(accessToken?: string): Promise<{ classes: string[] }> {
   const headers: Record<string, string> = {};
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken.trim()}`;
   const res = await fetch(`${API_URL}/api/predictions/classes`, { headers });
   if (!res.ok) return { classes: [] };
   return res.json();
@@ -110,9 +133,12 @@ export interface AnalyticsSummary {
 
 export async function getAdminAnalytics(accessToken: string): Promise<AnalyticsSummary> {
   const res = await fetch(`${API_URL}/api/admin/analytics`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
   });
-  if (!res.ok) throw new Error('Unauthorized or failed');
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
+  }
   return res.json();
 }
 
@@ -120,9 +146,12 @@ export async function semanticSearch(accessToken: string, q: string, limit = 20,
   const params = new URLSearchParams({ q, limit: String(limit) });
   if (crop) params.set('crop', crop);
   const res = await fetch(`${API_URL}/api/search?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
   });
-  if (!res.ok) throw new Error('Search failed');
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
+  }
   return res.json();
 }
 
@@ -135,9 +164,12 @@ export async function getRecommendations(
 ) {
   const params = new URLSearchParams({ disease, crop, use_llm: String(useLlm), language });
   const res = await fetch(`${API_URL}/api/recommendations?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
   });
-  if (!res.ok) throw new Error('Failed to load recommendations');
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
+  }
   return res.json();
 }
 
@@ -146,12 +178,12 @@ export async function getGradCam(file: File, accessToken: string) {
   form.append('file', file);
   const res = await fetch(`${API_URL}/api/explain/gradcam`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken.trim()}` },
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Grad-CAM unavailable for this server build');
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
   }
   const data = await res.json();
   return data.heatmap_base64 as string;
@@ -160,9 +192,12 @@ export async function getGradCam(file: File, accessToken: string) {
 export async function getFeatureImportance(accessToken: string, className: string, topK = 5) {
   const res = await fetch(
     `${API_URL}/api/explain/feature-importance/${encodeURIComponent(className)}?top_k=${topK}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${accessToken.trim()}` } }
   );
-  if (!res.ok) throw new Error('Feature importance failed');
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    throwIfUnauthorized(res, detail);
+  }
   return res.json() as Promise<Record<string, number>>;
 }
 

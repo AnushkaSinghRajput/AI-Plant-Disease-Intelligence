@@ -8,6 +8,7 @@ import { getAdminAnalytics, type AnalyticsSummary } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
+import { isSessionExpiredError } from '@/lib/apiErrors';
 
 const COLORS = ['#10b981', '#059669', '#047857', '#34d399', '#6ee7b7'];
 
@@ -24,8 +25,12 @@ export default function AdminPage() {
     }
     getAdminAnalytics(token)
       .then(setData)
-      .catch(() => {
-        toast.error('Access denied or failed to load analytics');
+      .catch((e) => {
+        if (isSessionExpiredError(e)) {
+          toast.error(e.message, { duration: 5000 });
+        } else {
+          toast.error('Access denied or failed to load analytics');
+        }
         setData(null);
       })
       .finally(() => setLoading(false));

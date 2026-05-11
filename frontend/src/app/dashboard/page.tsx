@@ -10,13 +10,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { t } from '@/lib/i18n';
 import { getDiseaseInsight } from '@/lib/diseaseInsights';
 import toast from 'react-hot-toast';
+import { isSessionExpiredError } from '@/lib/apiErrors';
 import { jsPDF } from 'jspdf';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
   const token = useAuthStore((s) => s.token);
-  const setToken = useAuthStore((s) => s.setToken);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const [history, setHistory] = useState<PredictionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -28,12 +29,18 @@ export default function DashboardPage() {
     }
     getHistory(token)
       .then(setHistory)
-      .catch(() => toast.error('Failed to load history'))
+      .catch((e) => {
+        if (isSessionExpiredError(e)) {
+          toast.error(e.message, { duration: 5000 });
+        } else {
+          toast.error('Failed to load history');
+        }
+      })
       .finally(() => setLoading(false));
   }, [token, router]);
 
   const handleLogout = () => {
-    setToken(null);
+    clearSession();
     router.push('/');
   };
 

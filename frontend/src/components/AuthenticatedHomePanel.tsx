@@ -6,8 +6,10 @@ import { motion } from 'framer-motion';
 import { Activity, ArrowRight, BarChart2, Clock, Leaf, Microscope, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { getHistory, type PredictionLog } from '@/lib/api';
+import { isSessionExpiredError } from '@/lib/apiErrors';
 import { getDiseaseInsight } from '@/lib/diseaseInsights';
 import type { Locale } from '@/lib/i18n';
+import toast from 'react-hot-toast';
 
 export function AuthenticatedHomePanel({ locale }: { locale: Locale }) {
   const token = useAuthStore((s) => s.token);
@@ -23,7 +25,12 @@ export function AuthenticatedHomePanel({ locale }: { locale: Locale }) {
     setLoading(true);
     getHistory(token, 10)
       .then(setItems)
-      .catch(() => setItems([]))
+      .catch((e) => {
+        setItems([]);
+        if (isSessionExpiredError(e)) {
+          toast.error(e.message, { duration: 5000 });
+        }
+      })
       .finally(() => setLoading(false));
   }, [token]);
 

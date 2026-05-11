@@ -1,16 +1,35 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { decodeJwtExpMs, isJwtExpired, isLikelyJwt } from '@/lib/jwt';
 
 type AuthState = {
   token: string | null;
   setToken: (t: string | null) => void;
+  clearSession: () => void;
 };
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
-      setToken: (token) => set({ token }),
+      setToken: (raw) => {
+        if (raw == null || raw === '') {
+          set({ token: null });
+          return;
+        }
+        const t = String(raw).trim();
+        if (!isLikelyJwt(t)) {
+          set({ token: null });
+          return;
+        }
+        const exp = decodeJwtExpMs(t);
+        if (exp != null && Date.now() >= exp - 15_000) {
+          set({ token: null });
+          return;
+        }
+        set({ token: t });
+      },
+      clearSession: () => set({ token: null }),
     }),
     { name: 'plant-disease-auth' }
   )

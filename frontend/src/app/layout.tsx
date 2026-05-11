@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { AuthValidator } from '@/components/AuthValidator';
 import { FloatingSeedInputs } from '@/components/FloatingSeedInputs';
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
+          <AuthValidator />
           {children}
           <FloatingSeedInputs />
           <Toaster position="top-right" toastOptions={{ duration: 4000 }} />

@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Loader2, CheckCircle, Sparkles, Scan, Brain, BarChart2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { isJwtExpired } from '@/lib/jwt';
+import { isSessionExpiredError } from '@/lib/apiErrors';
 import { useInputSeedStore } from '@/store/inputSeed';
 import {
   uploadAndPredict,
@@ -52,6 +54,7 @@ type RecPayload = {
 
 export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
   const token = useAuthStore((s) => s.token);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const uploadSeedTick = useInputSeedStore((s) => s.uploadSeedTick);
   const [file, setFile] = useState<File | null>(null);
   const lastFileRef = useRef<File | null>(null);
@@ -79,10 +82,33 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
       setHeatmap(null);
       setRecs(null);
       setFeatImp(null);
+      const authTok = token?.trim() || null;
+      const demoOpts = { language: locale, useAiRemedies };
+
       try {
-        const res = token
-          ? await uploadAndPredict(f, token, { language: locale, useAiRemedies })
-          : await demoPredict(f, { language: locale, useAiRemedies });
+        let res: PredictionResult;
+
+        if (authTok && !isJwtExpired(authTok)) {
+          try {
+            res = await uploadAndPredict(f, authTok, { language: locale, useAiRemedies });
+          } catch (err) {
+            if (isSessionExpiredError(err)) {
+              toast.error('Session expired — showing a demo result (not saved). Sign in again to save history.', {
+                duration: 5500,
+              });
+              res = await demoPredict(f, demoOpts);
+            } else {
+              throw err;
+            }
+          }
+        } else {
+          if (authTok && isJwtExpired(authTok)) {
+            clearSession();
+            toast.error('Session timed out. You have been signed out. Running a demo scan.', { duration: 4500 });
+          }
+          res = await demoPredict(f, demoOpts);
+        }
+
         setResult(res);
         setDiagnosisModalOpen(true);
         toast.success('Analysis complete');
@@ -92,7 +118,7 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
         setLoading(false);
       }
     },
-    [token, locale, useAiRemedies]
+    [token, locale, useAiRemedies, clearSession]
   );
 
   useEffect(() => {
@@ -148,7 +174,11 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
       setHeatmap(b64);
       toast.success('Heatmap ready — red highlights show where the model focused');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Grad-CAM failed');
+      if (isSessionExpiredError(err)) {
+        toast.error(err.message, { duration: 5000 });
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Grad-CAM failed');
+      }
     } finally {
       setGradLoading(false);
     }
@@ -166,8 +196,12 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
       setRecs(data);
       setRecUsedLlm(useLlm);
       toast.success(useLlm ? 'AI-enriched care plan loaded' : 'Care plan loaded');
-    } catch {
-      toast.error('Could not load recommendations');
+    } catch (err) {
+      if (isSessionExpiredError(err)) {
+        toast.error(err.message, { duration: 5000 });
+      } else {
+        toast.error('Could not load recommendations');
+      }
     } finally {
       setRecPending(null);
     }
@@ -182,8 +216,12 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
     try {
       const data = await getFeatureImportance(token, result.class_name, 5);
       setFeatImp(data);
-    } catch {
-      toast.error('Could not load model snapshot');
+    } catch (err) {
+      if (isSessionExpiredError(err)) {
+        toast.error(err.message, { duration: 5000 });
+      } else {
+        toast.error('Could not load model snapshot');
+      }
     } finally {
       setFeatLoading(false);
     }
@@ -204,18 +242,27 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl p-8 max-w-xl mx-auto"
+      className="glass rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xl shadow-slate-900/5 dark:shadow-black/30 max-w-xl mx-auto overflow-hidden"
     >
-      <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+      <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-2 border-b border-slate-200/60 dark:border-slate-700/50 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Leaf analysis</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Upload a clear photo — natural light, in focus, disease area visible if present.</p>
+      </div>
+
+      <div className="p-6 sm:p-8 space-y-5">
+      <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={useAiRemedies}
           onChange={(e) => setUseAiRemedies(e.target.checked)}
-          className="rounded border-slate-400 text-emerald-600 focus:ring-emerald-500"
+          className="mt-0.5 rounded border-slate-400 text-emerald-600 focus:ring-emerald-500"
         />
-        <span className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          AI-enriched remedy text when available (uses server AI; falls back to rules)
+        <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
+          <span className="font-medium text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            AI-enriched remedies
+          </span>
+          <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">When the server supports it, treatment text is expanded; otherwise rule-based guidance is used.</span>
         </span>
       </label>
 
@@ -224,7 +271,7 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition ${
+        className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition min-h-[200px] flex flex-col items-center justify-center ${
           isDragging ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-300 dark:border-slate-600 hover:border-emerald-500/50 hover:bg-emerald-500/5'
         }`}
       >
@@ -251,15 +298,17 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
         )}
       </div>
 
+      </div>
+
       <AnimatePresence>
         {result && insight && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-6 space-y-4"
+            className="px-6 sm:px-8 pb-8 space-y-5 -mt-2"
           >
-            <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50">
+            <div className="p-5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/50">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-emerald-500" />
@@ -296,12 +345,14 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
 
             <DiseaseInsightPanel insight={insight} />
 
-            <div className="flex flex-wrap gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Advanced tools</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 disabled={!token || gradLoading}
                 onClick={() => void loadGradCam()}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30 text-sm font-medium hover:bg-violet-500/25 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30 text-xs sm:text-sm font-medium hover:bg-violet-500/25 disabled:opacity-50 text-center min-h-[44px]"
               >
                 {gradLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
                 Grad-CAM heatmap
@@ -310,7 +361,7 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
                 type="button"
                 disabled={!token || recPending !== null}
                 onClick={() => void loadRecommendations(false)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/25 text-sm font-medium hover:bg-emerald-500/25 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/25 text-xs sm:text-sm font-medium hover:bg-emerald-500/25 disabled:opacity-50 text-center min-h-[44px]"
               >
                 {recPending === 'rule' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
                 Care plan
@@ -319,7 +370,7 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
                 type="button"
                 disabled={!token || recPending !== null}
                 onClick={() => void loadRecommendations(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-sm font-medium hover:bg-amber-500/25 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-xs sm:text-sm font-medium hover:bg-amber-500/25 disabled:opacity-50 text-center min-h-[44px]"
               >
                 {recPending === 'llm' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 AI care brief
@@ -328,11 +379,12 @@ export function UploadZone({ locale = 'en' }: { locale?: Locale }) {
                 type="button"
                 disabled={!token || featLoading}
                 onClick={() => void loadFeatureImportance()}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-500/15 text-slate-700 dark:text-slate-200 border border-slate-500/25 text-sm font-medium hover:bg-slate-500/25 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-slate-500/15 text-slate-700 dark:text-slate-200 border border-slate-500/25 text-xs sm:text-sm font-medium hover:bg-slate-500/25 disabled:opacity-50 text-center min-h-[44px]"
               >
                 {featLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart2 className="w-4 h-4" />}
                 Model snapshot
               </button>
+              </div>
             </div>
             {!token && (
               <p className="text-xs text-slate-500 dark:text-slate-400">

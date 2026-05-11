@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth';
 import { semanticSearch } from '@/lib/api';
 import { useInputSeedStore } from '@/store/inputSeed';
 import { getDiseaseInsight } from '@/lib/diseaseInsights';
+import { isSessionExpiredError } from '@/lib/apiErrors';
 import toast from 'react-hot-toast';
 
 interface SearchResult {
@@ -43,9 +44,13 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
         const data = await semanticSearch(token, q, 10);
         setResults(Array.isArray(data) ? data : []);
         setOpen(true);
-      } catch {
+      } catch (e) {
         setResults([]);
-        toast.error('Search failed');
+        if (isSessionExpiredError(e)) {
+          toast.error(e.message, { duration: 5000 });
+        } else {
+          toast.error('Search failed');
+        }
       } finally {
         setLoading(false);
       }

@@ -11,12 +11,12 @@ import { Leaf, Sun, Moon, Home, Shield, BarChart2, Cpu } from 'lucide-react';
 export function Navbar({ locale = 'en' }: { locale?: Locale }) {
   const router = useRouter();
   const token = useAuthStore((s) => s.token);
-  const setToken = useAuthStore((s) => s.setToken);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   const handleLogout = () => {
-    setToken(null);
+    clearSession();
     router.push('/');
   };
 
