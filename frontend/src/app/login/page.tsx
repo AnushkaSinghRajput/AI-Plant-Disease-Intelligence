@@ -13,6 +13,9 @@ import { getToken, demoLogin } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import toast from 'react-hot-toast';
 
+const DEMO_EMAIL = 'demo@example.com';
+const DEMO_PASSWORD = 'demo1234';
+
 export default function LoginPage() {
   const router = useRouter();
   const setToken = useAuthStore((s) => s.setToken);
@@ -65,6 +68,12 @@ export default function LoginPage() {
     }
   };
 
+  const fillDemoCredentials = () => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    toast.success('Demo credentials filled');
+  };
+
   const handleGoogleLogin = async () => {
     if (!firebaseReady) {
       toast.error('Google sign-in requires Firebase. Use email/password for demo.');
@@ -106,20 +115,50 @@ export default function LoginPage() {
           </p>
         )}
         <form onSubmit={handleEmailLogin} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500"
-          />
+          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white/60 dark:bg-slate-800/50 p-5 shadow-inner">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide mb-4">
+              Sign-in credentials
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="login-email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="login-password" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  Password
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              {!firebaseReady && (
+                <button
+                  type="button"
+                  onClick={fillDemoCredentials}
+                  className="w-full py-2.5 rounded-lg text-sm font-medium border border-dashed border-emerald-400/70 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                >
+                  Use sample credentials ({DEMO_EMAIL})
+                </button>
+              )}
+            </div>
+          </div>
           <button
             type="submit"
             disabled={loading}

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, Leaf, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { semanticSearch } from '@/lib/api';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useInputSeedStore } from '@/store/inputSeed';
 import toast from 'react-hot-toast';
 
 interface SearchResult {
@@ -23,29 +23,42 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const debouncedQuery = useDebounce(query, 400);
+  const searchSeedTick = useInputSeedStore((s) => s.searchSeedTick);
+  const lastSearchQuery = useInputSeedStore((s) => s.lastSearchQuery);
+  const processedSeedTick = useRef(0);
 
-  const runSearch = useCallback(async () => {
-    if (!debouncedQuery.trim()) {
-      setResults([]);
-      return;
-    }
-    if (!token) {
-      toast.error('Sign in to search');
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await semanticSearch(token, debouncedQuery, 10);
-      setResults(Array.isArray(data) ? data : []);
-      setOpen(true);
-    } catch {
-      setResults([]);
-      toast.error('Search failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedQuery, token]);
+  const searchWithText = useCallback(
+    async (text: string) => {
+      const q = text.trim();
+      if (!q) {
+        setResults([]);
+        return;
+      }
+      if (!token) {
+        toast.error('Sign in to search');
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await semanticSearch(token, q, 10);
+        setResults(Array.isArray(data) ? data : []);
+        setOpen(true);
+      } catch {
+        setResults([]);
+        toast.error('Search failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token]
+  );
+
+  useEffect(() => {
+    if (searchSeedTick === 0 || searchSeedTick === processedSeedTick.current) return;
+    processedSeedTick.current = searchSeedTick;
+    setQuery(lastSearchQuery);
+    if (token) void searchWithText(lastSearchQuery);
+  }, [searchSeedTick, lastSearchQuery, token, searchWithText]);
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
@@ -60,14 +73,14 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+          onKeyDown={(e) => e.key === 'Enter' && void searchWithText(query)}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Search diseases: e.g. tomato blight, potato leaf spot..."
           className="flex-1 px-4 py-4 bg-transparent outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400"
         />
         <button
           type="button"
-          onClick={runSearch}
+          onClick={() => void searchWithText(query)}
           className="px-5 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition"
         >
           Search
