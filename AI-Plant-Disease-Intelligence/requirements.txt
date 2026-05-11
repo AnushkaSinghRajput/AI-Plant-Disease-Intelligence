@@ -1,0 +1,7 @@
+# AI Plant Disease Intelligence — Backend dependencies
+# Install: pip install -r requirements.txt
+# Or use backend/requirements.txt directly when running from backend/
+
+-r backend/requirements.txt
+matplotlib
+scikit-learn

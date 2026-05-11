@@ -1,0 +1,65 @@
+# Env
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Model weights (large files)
+model/saved_models/*.h5
+model/saved_models/*.tflite
+model/saved_models/*.pt
+model/saved_models/*.pth
+saved_models/*.h5
+saved_models/*.tflite
+saved_models/*.keras
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/*
+!logs/.gitkeep
+
+# Build / coverage
+dist/
+build/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Datasets
+dataset/*
+!dataset/.gitkeep
+data/
+
+# Generated ML reports and figures
+plots/*
+!plots/.gitkeep
+
+# Any large compressed files
+*.zip
+*.tar
+*.gz
