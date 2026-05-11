@@ -17,6 +17,7 @@ router = APIRouter(prefix="/predictions", tags=["predictions"])
 async def demo_predict(
     file: UploadFile = File(...),
     language: str = Form("en"),
+    use_ai_remedies: bool = Form(False),
 ):
     """Demo prediction - no auth required. Use for trying the platform without sign-in."""
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -28,7 +29,11 @@ async def demo_predict(
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
     class_id, class_name, confidence = predict(image)
     severity = get_severity_estimate(class_name, confidence)
-    remedies = get_remedies(class_name, language)
+    if use_ai_remedies:
+        ai_r = await get_ai_remedies(class_name, language)
+        remedies = ai_r if ai_r else get_remedies(class_name, language)
+    else:
+        remedies = get_remedies(class_name, language)
     return PredictionResult(
         class_id=class_id,
         class_name=class_name,
@@ -55,7 +60,11 @@ async def upload_and_predict(
         raise HTTPException(status_code=400, detail="Invalid image file")
     class_id, class_name, confidence = predict(image)
     severity = get_severity_estimate(class_name, confidence)
-    remedies = await get_ai_remedies(class_name, language) if use_ai_remedies else get_remedies(class_name, language)
+    if use_ai_remedies:
+        ai_r = await get_ai_remedies(class_name, language)
+        remedies = ai_r if ai_r else get_remedies(class_name, language)
+    else:
+        remedies = get_remedies(class_name, language)
     image_url = upload_image(contents, current_user["user_id"], file.content_type or "image/jpeg")
     if image_url:
         save_prediction(

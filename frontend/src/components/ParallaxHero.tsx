@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useScroll, useTransform } from 'framer-motion';
+import Link from 'next/link';
 
 export function ParallaxHero() {
   const { scrollY } = useScroll();
@@ -41,7 +42,7 @@ export function ParallaxHero() {
             AI Plant Disease
           </span>
           <br />
-          <span className="text-slate-800 dark:text-slate-100">Intelligence Platform</span>
+          <span className="text-slate-800 dark:text-white">Intelligence Platform</span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -55,17 +56,44 @@ export function ParallaxHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-10 flex flex-wrap justify-center gap-4"
+          className="mt-10 flex flex-wrap justify-center gap-3"
         >
-          <div className="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+          <div className="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-700 dark:bg-slate-800/90 dark:border dark:border-slate-700/60 dark:text-emerald-400 text-sm font-medium">
             CNN + Vision Transformer
           </div>
-          <div className="px-4 py-2 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 text-sm font-medium">
+          <div className="px-4 py-2 rounded-full bg-teal-500/20 text-teal-700 dark:bg-slate-800/90 dark:border dark:border-slate-700/60 dark:text-teal-400 text-sm font-medium">
             Real-time inference
           </div>
-          <div className="px-4 py-2 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-sm font-medium">
+          <div className="px-4 py-2 rounded-full bg-cyan-500/20 text-cyan-700 dark:bg-slate-800/90 dark:border dark:border-slate-700/60 dark:text-cyan-300 text-sm font-medium">
             Research-grade analytics
           </div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.55 }}
+          className="mt-8 flex flex-wrap justify-center gap-4"
+        >
+          <button
+            type="button"
+            onClick={() => document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium shadow-lg shadow-emerald-500/25 hover:opacity-95 transition"
+          >
+            Start leaf diagnosis
+          </button>
+          <button
+            type="button"
+            onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-medium hover:bg-white dark:hover:bg-slate-800 transition"
+          >
+            Search diseases
+          </button>
+          <Link
+            href="/models"
+            className="px-6 py-3 rounded-xl border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-medium hover:bg-emerald-500/10 transition inline-flex items-center"
+          >
+            Model lab
+          </Link>
         </motion.div>
       </motion.div>
       {/* Scroll indicator */}

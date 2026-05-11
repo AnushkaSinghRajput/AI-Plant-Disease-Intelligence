@@ -28,11 +28,12 @@ export async function getToken(idToken: string): Promise<{ access_token: string;
 
 export async function demoPredict(
   file: File,
-  options?: { language?: string }
+  options?: { language?: string; useAiRemedies?: boolean }
 ): Promise<PredictionResult> {
   const form = new FormData();
   form.append('file', file);
   form.append('language', options?.language ?? 'en');
+  form.append('use_ai_remedies', String(options?.useAiRemedies ?? false));
   const res = await fetch(`${API_URL}/api/predictions/demo`, {
     method: 'POST',
     body: form,
@@ -125,8 +126,14 @@ export async function semanticSearch(accessToken: string, q: string, limit = 20,
   return res.json();
 }
 
-export async function getRecommendations(accessToken: string, disease: string, crop: string, useLlm = false) {
-  const params = new URLSearchParams({ disease, crop, use_llm: String(useLlm) });
+export async function getRecommendations(
+  accessToken: string,
+  disease: string,
+  crop: string,
+  useLlm = false,
+  language = 'en'
+) {
+  const params = new URLSearchParams({ disease, crop, use_llm: String(useLlm), language });
   const res = await fetch(`${API_URL}/api/recommendations?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -142,9 +149,21 @@ export async function getGradCam(file: File, accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
     body: form,
   });
-  if (!res.ok) throw new Error('Grad-CAM failed');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Grad-CAM unavailable for this server build');
+  }
   const data = await res.json();
   return data.heatmap_base64 as string;
+}
+
+export async function getFeatureImportance(accessToken: string, className: string, topK = 5) {
+  const res = await fetch(
+    `${API_URL}/api/explain/feature-importance/${encodeURIComponent(className)}?top_k=${topK}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) throw new Error('Feature importance failed');
+  return res.json() as Promise<Record<string, number>>;
 }
 
 export interface ModelComparison {

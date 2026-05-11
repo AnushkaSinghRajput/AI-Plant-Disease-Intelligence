@@ -15,7 +15,7 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 antialiased;
+  @apply bg-slate-50 text-slate-900 dark:bg-[#0B1120] dark:text-slate-100 antialiased;
 }
 
 .glass {

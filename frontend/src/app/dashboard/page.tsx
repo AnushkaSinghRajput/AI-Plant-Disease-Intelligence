@@ -8,8 +8,10 @@ import { getHistory, type PredictionLog } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { t } from '@/lib/i18n';
+import { getDiseaseInsight } from '@/lib/diseaseInsights';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -17,6 +19,7 @@ export default function DashboardPage() {
   const setToken = useAuthStore((s) => s.setToken);
   const [history, setHistory] = useState<PredictionLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -106,21 +109,46 @@ export default function DashboardPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
+                  className="glass rounded-xl overflow-hidden"
                 >
-                  <div>
-                    <p className="font-medium">{item.predicted_class.replace(/_/g, ' ')}</p>
-                    <p className="text-sm text-slate-500">
-                      {(item.confidence * 100).toFixed(1)}% · {new Date(item.created_at).toLocaleString()}
-                    </p>
+                  <div className="p-4 flex flex-wrap items-center justify-between gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                      className="text-left flex items-start gap-2 min-w-0 flex-1"
+                    >
+                      {expandedId === item.id ? (
+                        <ChevronDown className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium">{item.predicted_class.replace(/_/g, ' ')}</p>
+                        <p className="text-sm text-slate-500">
+                          {(item.confidence * 100).toFixed(1)}% · {new Date(item.created_at).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
+                          {getDiseaseInsight(item.predicted_class).summary}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadPdf(item)}
+                      className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition text-sm font-medium shrink-0"
+                    >
+                      {t('dashboard.downloadReport', 'en')}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => downloadPdf(item)}
-                    className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition text-sm font-medium"
-                  >
-                    {t('dashboard.downloadReport', 'en')}
-                  </button>
+                  {expandedId === item.id && (
+                    <div className="px-4 pb-4 pt-0 border-t border-slate-200/50 dark:border-slate-600/50">
+                      <div className="mt-3 rounded-lg bg-emerald-500/5 dark:bg-emerald-950/20 p-3 text-sm text-slate-600 dark:text-slate-300 space-y-2">
+                        <p className="font-medium text-emerald-800 dark:text-emerald-200">{getDiseaseInsight(item.predicted_class).headline}</p>
+                        <p>{getDiseaseInsight(item.predicted_class).whatToLookFor}</p>
+                        <p>{getDiseaseInsight(item.predicted_class).whyItMatters}</p>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>

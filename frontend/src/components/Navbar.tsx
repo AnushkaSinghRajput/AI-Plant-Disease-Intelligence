@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/auth';
 import { t, type Locale } from '@/lib/i18n';
-import { Leaf, Sun, Moon, LayoutDashboard, Shield, BarChart2 } from 'lucide-react';
+import { Leaf, Sun, Moon, Home, Shield, BarChart2, Cpu } from 'lucide-react';
 
 export function Navbar({ locale = 'en' }: { locale?: Locale }) {
   const router = useRouter();
@@ -43,17 +43,24 @@ export function Navbar({ locale = 'en' }: { locale?: Locale }) {
           {token ? (
             <>
           <Link
-            href="/dashboard"
+            href="/"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition"
           >
-            <LayoutDashboard className="w-4 h-4" />
-            Dashboard
+            <Home className="w-4 h-4" />
+            Home
+          </Link>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition"
+          >
+            <BarChart2 className="w-4 h-4" />
+            Analytics
           </Link>
           <Link
             href="/models"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition"
           >
-            <BarChart2 className="w-4 h-4" />
+            <Cpu className="w-4 h-4" />
             Models
           </Link>
           <Link

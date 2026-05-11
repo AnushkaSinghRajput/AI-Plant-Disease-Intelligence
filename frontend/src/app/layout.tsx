@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { FloatingSeedInputs } from '@/components/FloatingSeedInputs';
 
 export const metadata: Metadata = {
   title: 'AI Plant Disease Intelligence Platform',
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           {children}
+          <FloatingSeedInputs />
           <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         </ThemeProvider>
       </body>

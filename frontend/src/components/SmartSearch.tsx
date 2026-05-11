@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, Leaf, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { semanticSearch } from '@/lib/api';
 import { useInputSeedStore } from '@/store/inputSeed';
+import { getDiseaseInsight } from '@/lib/diseaseInsights';
 import toast from 'react-hot-toast';
 
 interface SearchResult {
@@ -25,7 +26,6 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
   const [open, setOpen] = useState(false);
   const searchSeedTick = useInputSeedStore((s) => s.searchSeedTick);
   const lastSearchQuery = useInputSeedStore((s) => s.lastSearchQuery);
-  const processedSeedTick = useRef(0);
 
   const searchWithText = useCallback(
     async (text: string) => {
@@ -54,8 +54,9 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
   );
 
   useEffect(() => {
-    if (searchSeedTick === 0 || searchSeedTick === processedSeedTick.current) return;
-    processedSeedTick.current = searchSeedTick;
+    const { searchSeedHandledUpTo } = useInputSeedStore.getState();
+    if (searchSeedTick === 0 || searchSeedTick <= searchSeedHandledUpTo) return;
+    useInputSeedStore.setState({ searchSeedHandledUpTo: searchSeedTick });
     setQuery(lastSearchQuery);
     if (token) void searchWithText(lastSearchQuery);
   }, [searchSeedTick, lastSearchQuery, token, searchWithText]);
@@ -92,32 +93,42 @@ export function SmartSearch({ onSelect }: { onSelect?: (disease: string, crop: s
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-xl z-50 max-h-80 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-xl z-50 max-h-[min(24rem,70vh)] overflow-y-auto"
           >
-            {results.map((r, i) => (
-              <motion.button
-                key={r.id || i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => {
-                  onSelect?.(r.disease_name, r.crop);
-                  setOpen(false);
-                }}
-                className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left transition"
-              >
-                <Leaf className="w-5 h-5 text-emerald-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-800 dark:text-slate-200 truncate">
-                    {r.disease_name}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                    {r.crop} {r.similarity != null ? `• ${(r.similarity * 100).toFixed(0)}% match` : ''}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-              </motion.button>
-            ))}
+            {results.map((r, i) => {
+              const insight = getDiseaseInsight(r.disease_name);
+              const apiBlurb = r.description?.trim();
+              return (
+                <motion.button
+                  key={r.id || i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  onClick={() => {
+                    onSelect?.(r.disease_name, r.crop);
+                    setOpen(false);
+                  }}
+                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left transition border-b border-slate-100 dark:border-slate-700/80 last:border-0"
+                >
+                  <Leaf className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800 dark:text-slate-200 leading-snug">
+                      {r.disease_name.replace(/___/g, ' · ').replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {r.crop} {r.similarity != null ? `· ${(r.similarity * 100).toFixed(0)}% match` : ''}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed line-clamp-3">
+                      {apiBlurb || insight.summary}
+                    </p>
+                    <p className="text-[11px] text-emerald-600/90 dark:text-emerald-400/90 mt-1 font-medium">
+                      Tap to jump to diagnosis upload ↓
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mt-1" />
+                </motion.button>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>

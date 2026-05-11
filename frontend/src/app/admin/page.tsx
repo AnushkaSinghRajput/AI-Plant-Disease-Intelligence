@@ -83,6 +83,8 @@ export default function AdminPage() {
                   <PieChart>
                     <Pie
                       data={data.top_diseases.map((d, i) => ({ name: d.class.replace(/_/g, ' ').slice(0, 15), value: d.count }))}
+                      dataKey="value"
+                      nameKey="name"
                       cx="50%"
                       cy="50%"
                       outerRadius={80}

@@ -10,7 +10,15 @@ const STEPS = [
   { title: 'View insights', desc: 'Grad-CAM heatmaps, confidence, and regional analytics.', icon: BarChart3 },
 ];
 
-export function OnboardingModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function OnboardingModal({
+  open,
+  onClose,
+  onGetStarted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onGetStarted?: () => void;
+}) {
   const [step, setStep] = useState(0);
 
   return (
@@ -84,7 +92,10 @@ export function OnboardingModal({ open, onClose }: { open: boolean; onClose: () 
                 ) : (
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={() => {
+                      onGetStarted?.();
+                      onClose();
+                    }}
                     className="px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium"
                   >
                     Get Started

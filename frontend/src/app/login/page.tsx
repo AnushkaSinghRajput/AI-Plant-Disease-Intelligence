@@ -23,7 +23,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-
   useEffect(() => {
     setAuthReady(typeof window !== 'undefined');
   }, []);
@@ -59,7 +58,7 @@ export default function LoginPage() {
         setToken(access_token);
       }
       toast.success('Signed in');
-      router.push('/dashboard');
+      router.push('/');
     } catch (err: unknown) {
       const message = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Login failed';
       toast.error(message);
@@ -92,7 +91,7 @@ export default function LoginPage() {
       const { access_token } = await getToken(idToken);
       setToken(access_token);
       toast.success('Signed in with Google');
-      router.push('/dashboard');
+      router.push('/');
     } catch (err: unknown) {
       const message = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Google sign-in failed';
       toast.error(message);

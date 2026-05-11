@@ -26,6 +26,7 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 const PIPELINE_STEPS = [
   { id: 'preprocess', label: 'Data Preprocessing', icon: Database, color: 'from-blue-500 to-cyan-500' },
@@ -306,9 +307,15 @@ export default function ModelsPage() {
                               </div>
                               <div className="mt-4 p-3 rounded-lg bg-slate-200/50 dark:bg-slate-700/50 text-center">
                                 <ImageIcon className="w-6 h-6 mx-auto text-slate-400 mb-1" />
-                                <p className="text-xs text-slate-500">
-                                  Grad-CAM explainability preview — Upload image on home page to generate
+                                <p className="text-xs text-slate-500 mb-2">
+                                  Grad-CAM explainability — sign in, upload a leaf on the home page, then open the heatmap action.
                                 </p>
+                                <Link
+                                  href="/#upload-section"
+                                  className="inline-flex text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                                >
+                                  Go to uploader →
+                                </Link>
                               </div>
                             </td>
                           </motion.tr>
